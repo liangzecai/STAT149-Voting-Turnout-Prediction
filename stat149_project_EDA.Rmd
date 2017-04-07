@@ -1,0 +1,417 @@
+---
+title: "stat149_project_EDA"
+author: "Zecai Liang"
+date: "2/28/2017"
+output: pdf_document
+---
+
+###OUTLINE###
+
+Part 1. Exploratory Analysis
+    1.1 - check: dimension of data
+    1.2 - check: missing value 
+      determine imputation method
+    1.3 - check: if unbalanced data (ratio of 0/1 labels)
+    1.4 - check: distribution of each variable
+      (screwd? need transformation? feature engineering?)
+    1.5 - check: colinearity
+    1.6 - *research: possible interactions between variables* 
+      *(check domain knowledge/paper/reports/similar Kaggle competitions)*
+
+Part 2. Visualize clustering/dimension reduction
+    2.1 PCA
+    2.2 t-SNE
+
+Part 3. Baseline Classifier
+    3.1 GAM
+       3.1.1 full model (no interaction yet)
+       3.1.2 vairable selection: forward/backward/both (no interaction yet)
+    3.2 random forest
+    3.3. SVM
+
+Part 4. Tune Model
+    4.1 add interaction
+    4.2 add feature engineering
+    4.3 tune parameters by cross validation
+    4.4 ensemble multiple models if necessary (popular vote)
+
+```{r}
+## load libraries
+options(warning = -1)
+
+library("ggplot2")
+library("gridExtra")
+
+library("cluster")
+library(factoextra)
+library(corrplot)
+
+library(e1071)
+library(gam)
+library(randomForest)
+
+```
+
+
+# Part 1. Exploratory Analysis
+
+## 1.1 - check: dimension of data
+
+```{r setup, include=FALSE}
+## download data
+# https://inclass.kaggle.com/c/who-voted/data
+
+## load data
+train <- read.csv("train.csv")
+test <- read.csv("test.csv")
+
+# dimension
+print("Dimensino of train data:")
+dim(train)
+print("Dimensino of test data:")
+dim(test)
+```
+
+```{r}
+str(train)
+```
+
+```{r}
+## turn categorical variable into factors
+train$cd <- factor(train$cd)
+train$hd <- factor(train$hd)
+
+test$cd <- factor(test$cd)
+test$hd <- factor(test$hd)
+```
+
+
+```{r}
+colnames(train)
+colnames(test)
+```
+
+```{r}
+## pool data
+df1 <- cbind(train[-1])
+df1$source <- "train"
+
+df2 <- cbind(test[1:16])
+df2$source <- "test"
+
+all <- rbind(df1, df2)
+```
+
+
+## 1.2 - check: missing value 
+
+Most rows of `dbdistance` and `vccdistance` are missing.
+```{r}
+# number of NA for train data
+print("Number of NA for train data:")
+colSums(is.na(train))
+
+# number of NA for test data
+print("Number of NA for test data:")
+colSums(is.na(test))
+```
+
+## 1.3 - check: if unbalanced data
+Conclusion: mostly balanced data, more Y than N.
+
+```{r}
+table(train['voted'])
+```
+
+## 1.4 - check: distribution of each variable
+Check the distribution in train, test and the pooled data.
+
+
+```{r}
+## function to plot categorical variable
+  # plot 1: the distribution of train and test data
+  # plot 2: the pertange of train data that didn't vote
+
+bar_plot <- function(val, alpha = 0.8, width = 0.5, ncol = 2, angle = 0){
+    p1 = ggplot(data = all, aes_string(x = val)) + 
+        geom_bar(aes(fill = source), alpha = alpha, position = "dodge") +
+        ggtitle("Train + Test") +
+       theme(axis.text.x = element_text(angle = angle, hjust = 1))
+
+   p2 = ggplot(data = train, aes_string(x = val)) + 
+        geom_bar(aes(color = voted), 
+                 width = width, alpha = alpha, position = "fill") + 
+        scale_color_manual(values = c("red","blue")) +
+        ggtitle("Train (%)") +
+       theme(axis.text.x = element_text(angle = angle, hjust = 1))
+
+    grid.arrange(p1, p2, ncol = ncol)
+}
+```
+
+
+```{r}
+## function to plot quantitative variable
+  # plot 1: the distribution of train and test data
+  # plot 2: the pertange of train data that didn't vote
+
+his_plot <- function(val, alpha = 0.8, width = 0.5, ncol = 2, angle = 0){
+    p1 = ggplot(data = all, aes_string(x = val)) + 
+        geom_histogram(aes(fill = source), alpha = alpha, position = "dodge") +
+        ggtitle("Train + Test") +
+        theme(axis.text.x = element_text(angle = angle, hjust = 1))
+
+   p2 = ggplot(data = train, aes_string(x = val)) + 
+        geom_histogram(aes(color = voted), 
+                        alpha = alpha, position = "fill") + 
+        scale_color_manual(values = c("red","blue")) +
+        ggtitle("Train (%)") +
+       theme(axis.text.x = element_text(angle = angle, hjust = 1))
+
+    grid.arrange(p1, p2, ncol = ncol)
+}
+```
+
+
+### Gender
+```{r}
+table(train["gender"], exclude = NULL)
+table(test["gender"], exclude = NULL)
+table(all["gender"], exclude = NULL)
+```
+
+
+```{r}
+bar_plot("gender")
+```
+
+### cd
+congressional district
+```{r}
+table(train["cd"], exclude = NULL)
+table(test["cd"], exclude = NULL)
+table(all["cd"], exclude = NULL)
+```
+
+```{r}
+bar_plot("factor(cd)")
+```
+
+### hd
+state house district
+* some district (57) have high prpbability of not voting
+
+```{r}
+#table(train["hd"], exclude = NULL)
+#table(test["hd"], exclude = NULL)
+#table(all["hd"], exclude = NULL)
+```
+
+```{r}
+bar_plot("factor(hd)", ncol = 1, angle = 90)
+```
+
+### age
+
+```{r}
+his_plot("age", ncol = 1)
+```
+
+
+### party
+* Check with the reported distribution. Unaliated?
+(D=Democrat, R=Republican, L=Libertarian, G=Green, O=American Constitutional Party, U=Unaliated)
+
+```{r}
+bar_plot("party")
+```
+
+
+### racename 
+(Race or religious aliation)
+
+```{r}
+#table(train["racename"], exclude = NULL)
+#table(test["racename"], exclude = NULL)
+#table(all["racename"], exclude = NULL)
+
+bar_plot("racename", angle = 30)
+```
+
+### hsonly 
+(score for likelihood of having high school as highest completed degree)
+
+```{r}
+his_plot("hsonly", ncol = 1)
+```
+
+### mrrg 
+(score for likelihood of being married)
+* two extrmes for plot 1; marraiged and voting seem negatiely correlated.
+
+```{r}
+his_plot("mrrg", ncol = 1)
+```
+
+### chldprsnt 
+(score for likelihood of having children at home)
+* medium score correlates with no
+
+```{r}
+his_plot("chldprsnt", ncol = 1)
+```
+
+
+### cath 
+(score for likelihood of being Catholic)
+* most people are not likely to be Catholic
+```{r}
+his_plot("cath", ncol = 1)
+```
+
+### evang 
+(score for likelihood of being Evangelical)
+```{r}
+his_plot("evang", ncol = 1)
+```
+
+### nonchrst 
+(score for likelihood of being non-Christian)
+```{r}
+his_plot("nonchrst", ncol = 1)
+```
+
+
+### otherchrst 
+(score for likelihood of being another form of Christian)
+```{r}
+his_plot("otherchrst", ncol = 1)
+```
+
+### days.since.reg 
+(number of days since registered as a voter)
+```{r}
+his_plot("days.since.reg", ncol = 1)
+```
+
+
+##  (not finished) 1.5 - check: colinearity
+
+```{r}
+colnames(train)
+```
+
+
+```{r}
+## all the quantitative variables
+pairs(train[c("age", "hsonly", "mrrg", "chldprsnt")], cex = 0.01)
+```
+
+```{r}
+##
+corrplot(cor(train[c("age", "hsonly", "mrrg", "chldprsnt")]), method = "color")
+```
+
+
+# (not finished) Part 2. Visualize clustering/dimension reduction
+
+```{r}
+## exclude `voted' column and columns with NA
+train.temp <- train[!names(train) %in% c("voted", "dbdistance", "vccdistance")]
+
+## scale column of quantitative variable
+for (i in 1:dim(train.temp)[2]){
+    if (class(train.temp[1,i]) != "factor"){
+        train.temp[i] = scale(train.temp[i])
+    }
+}
+    
+# distance metrix
+train.dist <- daisy(temp, metric = "gower")
+```
+
+
+# Part 3. Baseline Classifier
+
+```{r}
+## ignore the two columns with most NA
+train.simple <- train[!names(train) %in% c("dbdistance", "vccdistance")]
+## delete all NA values 
+train.simple <- na.omit(train.simple)
+```
+
+
+```{r}
+## function to calculate prediction accuracy from models
+train.accu <- function(model, data){
+    y.predict = predict(model, newdata = data, type = "response")
+    y = ifelse(y.predict > 0.5, "Y", "N")
+    table = table(train.simple$voted, y, dnn = c("data", "predict"))
+    
+    precision = table[2,2] / (table[1,2] + table[2,2])
+    recall = table[2,2] / (table[2,1] + table[2,2])
+    accu = (table[1,1] + table[2,2]) / sum(table)
+    Fscore = 2* precision * recall / (precision + recall)
+
+    return(list("Confusion Matrix" = table, "Precision" = precision, "Recall" = recall,
+                "Accuracy" = accu, "F Score" = Fscore))
+}
+```
+
+
+## 3.1 GAM
+
+### 3.1.1 glm
+```{r}
+train.lg <- glm(voted ~., data = train.simple, family = binomial)
+summary(train.lg)
+train.accu(train.lg)
+```
+
+
+### 3.1.2 gam
+
+```{r}
+colnames(train)
+```
+
+
+```{r}
+# non-linear for all the quantitative variables
+train.gam <- gam(voted ~ s(age) + s(hsonly) + s(mrrg) + s(chldprsnt) + 
+                     s(cath) + s(evang) + s(nonchrst) + s(otherchrst) +
+                     s(days.since.reg) + gender + cd + hd, 
+                 data = train.simple, family = binomial)
+
+summary(train.gam)
+train.accu(train.gam)
+```
+
+--------------------------
+
+```{r}
+## convert all categorical variables to dummy coding
+
+library(dummies)
+train.dummy <- dummy.data.frame(data = train.simple, 
+                                names = c("gender", "cd", "hd", "party", "racename"))
+
+```
+
+
+## 3.2 random forest
+```{r}
+library(randomForest)
+
+train.rf = randomForest(data = train.dummy, voted ~., importance=TRUE)
+print(train.rf)
+```
+
+
+## 3.3. SVM
+
+```{r}
+library(e1071)
+train.svm <- svm(voted ~., data = train.dummy, kernel = "radial")
+```
+
