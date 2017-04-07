@@ -304,12 +304,16 @@ colnames(train)
 
 ```{r}
 ## all the quantitative variables
-pairs(train[c("age", "hsonly", "mrrg", "chldprsnt")], cex = 0.01)
+#pairs(train[c("age", "hsonly", "mrrg", "chldprsnt", "days.since.reg")], cex = 0.01)
 ```
 
 ```{r}
-##
-corrplot(cor(train[c("age", "hsonly", "mrrg", "chldprsnt")]), method = "color")
+## correlation plot
+corrplot(cor(train[c("cath", "evang", "nonchrst", "otherchrst")]), method = "color")
+```
+
+```{r}
+corrplot(cor(train[c("age", "hsonly", "mrrg", "chldprsnt", "days.since.reg")]), method = "color")
 ```
 
 
@@ -317,17 +321,17 @@ corrplot(cor(train[c("age", "hsonly", "mrrg", "chldprsnt")]), method = "color")
 
 ```{r}
 ## exclude `voted' column and columns with NA
-train.temp <- train[!names(train) %in% c("voted", "dbdistance", "vccdistance")]
+# train.temp <- train[!names(train) %in% c("voted", "dbdistance", "vccdistance")]
 
 ## scale column of quantitative variable
-for (i in 1:dim(train.temp)[2]){
-    if (class(train.temp[1,i]) != "factor"){
-        train.temp[i] = scale(train.temp[i])
-    }
-}
+#for (i in 1:dim(train.temp)[2]){
+#    if (class(train.temp[1,i]) != "factor"){
+#        train.temp[i] = scale(train.temp[i])
+#    }
+#}
     
 # distance metrix
-train.dist <- daisy(temp, metric = "gower")
+# train.dist <- daisy(temp, metric = "gower")
 ```
 
 
@@ -392,26 +396,26 @@ train.accu(train.gam)
 ```{r}
 ## convert all categorical variables to dummy coding
 
-library(dummies)
-train.dummy <- dummy.data.frame(data = train.simple, 
-                                names = c("gender", "cd", "hd", "party", "racename"))
+#library(dummies)
+#train.dummy <- dummy.data.frame(data = train.simple, 
+#                                names = c("gender", "cd", "hd", "party", "racename"))
 
 ```
 
 
 ## 3.2 random forest
 ```{r}
-library(randomForest)
+#library(randomForest)
 
-train.rf = randomForest(data = train.dummy, voted ~., importance=TRUE)
-print(train.rf)
+#train.rf = randomForest(data = train.dummy, voted ~., importance=TRUE)
+#print(train.rf)
 ```
 
 
 ## 3.3. SVM
 
 ```{r}
-library(e1071)
-train.svm <- svm(voted ~., data = train.dummy, kernel = "radial")
+#library(e1071)
+#train.svm <- svm(voted ~., data = train.dummy, kernel = "radial")
 ```
 
