@@ -126,7 +126,8 @@ cv_score_rf = function(ntree, mtry, data, n_fold = 10, seed = 0){
     set.seed(seed)
     folds_i = sample(rep(1:n_folds, length.out = data))
     # vector to store cross validation score
-    cv_score = rep(0, times = n_fold)
+    train_score = 0
+    test_score = 0
     
     for (i in 1:n_fold){
         # split data
