@@ -1,0 +1,103 @@
+---
+title: "STAT149_project_CV"
+author: "Zecai Liang"
+date: "4/24/2017"
+output: pdf_document
+---
+
+```{r}
+#### Function to Calculate Discrepency Score ####
+# Input: 
+        # y.true: factor vector of 'Y' and 'N'
+        # y.predict: numeric vector of probabilities
+
+# Output: disprepancy score
+
+model_score = function(y.true, y.predict){
+    
+    ## convert y.true to binary of 0/1
+    y.true[y.true == 'Y'] = 1
+    y.true[y.true == 'N'] = 0
+    
+    ## score
+    score = -mean(y.true * log(y.predict) + (1 - y.true) * log(1 - y.predict))
+    
+    return(score)
+}
+```
+
+
+```{r}
+#### Function to Calculate Cross-Validation Score (GLM model) ####
+# ref: https://stat.ethz.ch/R-manual/R-devel/library/boot/html/cv.glm.html
+set.seed(0)
+cv.glm(data, glmfit, cost = model_score, K = 10)
+```
+
+
+```{r}
+#### Function to Calculate Cross-Validation Score (GAM model) ####
+# Input: 
+        # formular: the formula of gam model (including s and)
+        # data
+        # n_fold: k-fold cross validation, default = 10
+# Output: the averaged cv_score for given parameters
+
+cv_score_gam = function(formula, data, n_fold = 10){
+    folds_i = sample(sample(1:n_fold, nrow(data), replace = TRUE) )
+    # vector to store cross validation score
+    cv_score = rep(0, times = n_fold)
+    
+    for (i in 1:n_fold){
+        # split data
+        train= data[folds_i != i]
+        test = data[folds_i == i]
+
+        # train model
+        model = gam(factor(voted) ~., data = train, family = "binomial")
+        # predict
+        y.predict = predict(model, newdata = test, type = "prob")
+        # evaluate score
+        score = model_score(test$voted, y.predict)
+        cv_score[i] = score
+    }
+    
+    return(mean(cv_score))
+}
+
+```
+
+
+```{r}
+#### Function to Calculate Cross-Validation Score (RF model) ####
+# Input: 
+        # ntree: parameter 'ntree' for randomForest
+        # mtry: parameter 'mtry' for randomForest
+        # data
+        # n_fold: k-fold cross validation, default = 10
+# Output: the averaged cv_score for given parameters
+
+cv_score_rf = function(ntree, mtry, data, n_fold = 10){
+    folds_i = sample(rep(1:n_folds, length.out = data))
+    # vector to store cross validation score
+    cv_score = rep(0, times = n_fold)
+    
+    for (i in 1:n_fold){
+        # split data
+        train= data[folds_i != i]
+        test = data[folds_i == i]
+
+        # train model
+        rf = randomForest(factor(voted) ~., data = train, ntree = ntree, mtry = mtry)
+        # predict
+        y.predict = predict(rf, newdata = test, type = "prob")
+        # evaluate score
+        score = model_score(test$voted, y.predict)
+        cv_score[i] = score
+    }
+    
+    return(mean(cv_score))
+}
+```
+
+
