@@ -3,17 +3,17 @@
 google drive: https://drive.google.com/drive/folders/0B0oIcDvtYEfRa3B1OENKVVVfOU0
 
 John: 
-- cd, hd (rural/urban)
-- dbdistance, vccdistance (mean in each district) 
+- write Part3 for report
 
 Yuefeng:
-- NA imputation
+- write Part1-2 for report
+- draft structure of Part4 for repost
 
 Zecai:
-- code for cross validation
+- tune RF model
 
 Qianli:
-- gam mode, interaction items
+- tune GLM/GAM model
 
 
 
