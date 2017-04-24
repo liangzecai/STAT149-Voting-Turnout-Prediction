@@ -1,0 +1,82 @@
+---
+title: "STAT149_project_extraData"
+author: "Zecai Liang"
+date: "4/24/2017"
+output: pdf_document
+---
+
+### Assemble Data
+
+
+```{r}
+##original data
+data.train = read.csv('train.csv')
+data.test = read.csv('test.csv')
+
+##imputed data
+train_X = read.csv("train_nafill_X.csv")
+test_X = read.csv("test_nafill_X.csv")
+
+## district data (colletec by John)
+library(xlsx)
+hd.data = read.xlsx("149hddata.xlsx", sheetIndex = 1, header = TRUE)
+# rename columns
+colnames(hd.data) = c("hd", "hd.area", "hd.population", "hd.density", "hd.city")
+# convert factor columns
+hd.data$hd.city = factor(hd.data$hd.city)
+```
+
+```{r}
+head(hd.data)
+```
+
+```{r}
+head(train_X)
+```
+
+```{r}
+library(dplyr)
+train_full_X = left_join(train_X, hd.data, by = c("hd"))
+test_full_X = left_join(test_X, hd.data, by = c("hd"))
+```
+
+```{r}
+dim(train_full_X)
+dim(test_full_X)
+```
+
+```{r}
+## convert "cd" and "hd" to factor
+train_full_X$cd = factor(train_full_X$cd)
+test_full_X$cd = factor(test_full_X$cd)
+
+train_full_X$hd = factor(train_full_X$hd)
+test_full_X$hd = factor(test_full_X$hd)
+```
+
+```{r}
+head(train_full_X)
+```
+
+```{r}
+## add "voted" column to train data
+train_full = cbind(voted = data.train$voted, train_full_X)
+## add "id" column to test data
+test_full = cbind(test_full_X, Id = data.test$Id)
+```
+
+```{r}
+head(train_full)
+```
+
+```{r}
+head(test_full)
+```
+
+
+```{r}
+## save to local files
+write.csv(train_full, "train_full.csv", row.names = FALSE)
+write.csv(test_full, "test_full.csv", row.names = FALSE)
+```
+
