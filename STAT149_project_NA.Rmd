@@ -1,0 +1,182 @@
+---
+title: "STAT149_project_NA"
+author: "Zecai Liang"
+date: "4/23/2017"
+output: pdf_document
+---
+
+Ref:
+http://stats.idre.ucla.edu/r/faq/how-do-i-perform-multiple-imputation-using-predictive-mean-matching-in-r/
+https://datascienceplus.com/imputing-missing-data-with-r-mice-package/
+
+
+```{r}
+## install libraries
+# install.packages('mice')
+# install.packages('VIM')
+```
+
+```{r}
+## load libraries
+library(mice)
+library(VIM)
+library(ggplot2)
+library(lattice)
+```
+
+```{r}
+## Load Data
+data.train = read.csv('train.csv')
+data.test = read.csv('test.csv')
+```
+
+```{r}
+dim(data.train)
+dim(data.test)
+```
+
+# Miss Value Imputation
+
+## Check Missing Value Patterns
+
+```{r}
+md.pattern(data.train)
+```
+
+
+```{r}
+md.pattern(data.test)
+```
+
+
+Visualize the missing values in 'dbdistance' and 'vccdistance' in training data:
+```{r}
+marginplot(data.train[c('dbdistance', 'vccdistance')], alpha = 0.5, cex = 1)
+```
+
+Visualize the missing values in 'dbdistance' and 'vccdistance' in test data:
+```{r}
+marginplot(data.test[c('dbdistance', 'vccdistance')], alpha = 0.5, cex = 1)
+```
+
+There are in totla four variables that have missing values: 'cd' and 'hd', 'dbdistance' and 'vccdistance'.
+
+The variables 'cd' and 'hd' have really small amount of missing values (2/118529 in training data, and 1/39510 in test data), so we'll fill them first with the most frequent value.
+
+The vairables 'dbdistance' and 'vccdistance' are largely missing (113247/118529 in trainig data, and 37757/39510 in test data), and it's completely correlated whether the two variables are missing or not missing. So We'll use the rest of the variables to imputate these two variables.
+
+
+
+Combine the variables in training and test data for imputation (exclude the 'voted' column in training data, exclude the 'Id' column in test data):
+
+```{r}
+na.data = rbind(data.train[-1], data.test[-17])
+```
+
+
+
+## Filling 'cd' and 'hd'
+
+Fill the 3 rows where variables 'cd' and 'hd' are missing (2/118529 in training data, and 1/39510 in test data):
+
+```{r}
+table(na.data$cd) # the most frequent district: 2
+table(na.data$hd) # the most frequent district: 2
+```
+
+Fill the missing 'cd' and 'hd' with the most frequent district in the whole data (train and test combined):
+
+```{r}
+na.data[is.na(na.data$cd), "cd"] = 2
+na.data[is.na(na.data$hd), "hd"] = 2
+```
+
+
+Check the missing data pattern aftering filling 'cd' and 'hd':
+
+```{r}
+md.pattern(na.data)
+```
+
+Turn 'cd' and 'hd' into categorical variables:
+```{r}
+## turn categorical variable into factors
+na.data$cd <- factor(na.data$cd)
+na.data$hd <- factor(na.data$hd)
+na.data$cd <- factor(na.data$cd)
+na.data$hd <- factor(na.data$hd)
+```
+
+
+
+## Imputating 'dbdistance' and 'vccdistance'
+
+We'll have to assume that the data is MCAR (missing completely at random).
+
+### Check distribution of 'dbdistance' and 'vccdistance'
+
+Also we notice that the distribution of 'dbdistance' and 'vccdistance' are extremely left-skwered, so the imputation method of 'pmm' (predictive mean matching) may not be working well (which assumes normal distribution) on the original data.
+
+```{r}
+marginplot(na.data[c('dbdistance', 'vccdistance')], alpha = 0.5, cex = 1)
+```
+
+We tried different transformations of 'dbdistance' and 'vccdistance', but even taking the log10 of the original value still results in a left-skewed distribution. Thus we decide to use 'random forest' as the imputation method, which is less sensitive to the distribution of the original value.
+
+```{r}
+hist(log10(na.data$vccdistance), breaks = 50)
+#na.data$vccdistance_scale = scale(log(na.data$vccdistance))
+```
+
+
+### Imputation
+
+```{r}
+tempData = mice(na.data,m=2,meth='rf',seed=0)
+```
+
+
+### Imputation Diagnostic Checks
+
+Check the distribution of observed data (blue) and imputed data (red):
+
+```{r}
+densityplot(tempData)
+```
+
+```{r}
+stripplot(tempData, dbdistance + vccdistance ~ .imp,
+          pch = 20, cex = 0.2)
+```
+
+We can see that imputed values have similar distribution as the observed values (although slightly right shifted).
+
+
+### Fill in the missing data
+
+We select the first imputed data set to fill in the missing values:
+
+```{r}
+completedData <- complete(tempData,1)
+```
+
+## Re-assemble New Training and Test Data
+
+The train and test data after imputation (exclude the 'voted' column in training data, exclude the 'Id' column in test data):
+
+```{r}
+train.nafill.X = completedData[1:118529, ]
+test.nafill.X = completedData[118530:158039, ]
+```
+
+```{r}
+## save the imputed data file
+write.csv(train.nafill.X, file = "train_nafill_X.csv", row.names = FALSE)
+write.csv(test.nafill.X, file = "test_nafill_X.csv", row.names = FALSE)
+```
+
+```{r}
+head(completedData)
+```
+
+---
