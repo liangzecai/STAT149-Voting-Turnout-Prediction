@@ -18,9 +18,11 @@ model_score = function(y.true, y.predict){
     ## convert y.true to binary of 0/1
     y.true = as.numeric(y.true) - 1
     
-    ## score
-    score = -mean(y.true * log(y.predict + 10^(-23)) + 
-                      (1 - y.true) * log(1 - y.predict + 10^(-23)))
+    ## score (consistent with Qianli's version)
+    #score = -mean(y.true * log(y.predict + 10^(-23)) + (1 - y.true) * log(1 - y.predict + 10^(-23)))
+    e = 1e-5
+    score = -mean((y.true * log(pmax(pmin(y.predict,1-e),e)) + 
+                       (1-y.true) * log(pmax(pmin(1-y.predict,1-e),e))))
     
     return(score)
 }
@@ -40,8 +42,8 @@ cv_score_glm = function(formula, data, n_fold = 10, seed = 0){
     set.seed(seed)
     folds_i = sample(1:n_fold, nrow(data), replace = TRUE)
     # vector to store cross validation score
-    train_score = 0
-    test_score = 0
+    train_score = rep(0, n_fold)
+    test_score = rep(0, n_fold)
     
     for (i in 1:n_fold){
         # split data
@@ -57,14 +59,12 @@ cv_score_glm = function(formula, data, n_fold = 10, seed = 0){
         score1 = model_score(test$voted, test.predict[,2])
         score2 = model_score(train$voted, train.predict[,2])
         
-        train_score = train_score + score1
-        test_score = test_score + score2
+        train_score[i] = score1
+        test_score[i] = score2
     }
     
-    train_score = train_score / n_fold
-    test_score = test_score / n_fold
     
-    return(c(train_score, test_score)) 
+    return(c(mean(train_score), mean(test_score)))
 }
 
     
@@ -83,8 +83,8 @@ cv_score_gam = function(formula, data, n_fold = 10, seed = 0){
     set.seed(seed)
     folds_i = sample(1:n_fold, nrow(data), replace = TRUE)
     # vector to store cross validation score
-    train_score = 0
-    test_score = 0
+    train_score = rep(0, n_fold)
+    test_score = rep(0, n_fold)
     
     for (i in 1:n_fold){
         # split data
@@ -92,22 +92,20 @@ cv_score_gam = function(formula, data, n_fold = 10, seed = 0){
         test = data[folds_i == i, ]
 
         # train model
-        model = gam(factor(voted) ~., data = train, family = "binomial")
-        # predict
+        model = gam(factor(voted) ~., data = train, family = "bionomial")
+       # predict
         train.predict = predict(model, newdata = train, type = "prob")
         test.predict = predict(model, newdata = test, type = "prob")
         # evaluate score
-        score1 = model_score(test$voted, test.predict[,2])
-        score2 = model_score(train$voted, train.predict[,2])
+        score1 = model_score(train$voted, train.predict[,2])
+        score2 = model_score(test$voted, test.predict[,2])
         
-        train_score = train_score + score1
-        test_score = test_score + score2
+        train_score[i] = score1
+        test_score[i] = score2
     }
     
-    train_score = train_score / n_fold
-    test_score = test_score / n_fold
     
-    return(c(train_score, test_score))
+    return(c(mean(train_score), mean(test_score)))
 }
 
 ```
@@ -122,35 +120,34 @@ cv_score_gam = function(formula, data, n_fold = 10, seed = 0){
         # n_fold: k-fold cross validation, default = 10
 # Output: the averaged training score and cv score
 
-cv_score_rf = function(ntree, mtry, data, n_fold = 10, seed = 0){
+cv_score_rf = function(ntree, mtry, data, nodesize, n_fold = 10, seed = 0){
     set.seed(seed)
     folds_i = sample(1:n_fold, nrow(data), replace = TRUE)
     # vector to store cross validation score
-    train_score = 0
-    test_score = 0
+    train_score = rep(0, n_fold)
+    test_score = rep(0, n_fold)
     
     for (i in 1:n_fold){
         # split data
-        train= data[folds_i != i]
-        test = data[folds_i == i]
+        train= data[folds_i != i, ]
+        test = data[folds_i == i, ]
 
         # train model
-        rf = randomForest(factor(voted) ~., data = train, ntree = ntree, mtry = mtry)
+        model = randomForest(factor(voted) ~., data = train, 
+                             ntree = ntree, mtry = mtry, nodesize = nodesize)
        # predict
         train.predict = predict(model, newdata = train, type = "prob")
         test.predict = predict(model, newdata = test, type = "prob")
         # evaluate score
-        score1 = model_score(test$voted, test.predict[,2])
-        score2 = model_score(train$voted, train.predict[,2])
+        score1 = model_score(train$voted, train.predict[,2])
+        score2 = model_score(test$voted, test.predict[,2])
         
-        train_score = train_score + score1
-        test_score = test_score + score2
+        train_score[i] = score1
+        test_score[i] = score2
     }
     
-    train_score = train_score / n_fold
-    test_score = test_score / n_fold
     
-    return(c(train_score, test_score))
+    return(c(mean(train_score), mean(test_score)))
 }
 ```
 
