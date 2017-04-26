@@ -1,0 +1,257 @@
+---
+title: "STAT149_project_RF"
+author: "Zecai Liang"
+date: "4/24/2017"
+output: pdf_document
+---
+
+# Classification Model: Random Forest
+
+### Load Data
+
+```{r}
+## the full data (after imputation + extra "hd" information)
+train = read.csv("train_full.csv")
+test = read.csv("test_full.csv")
+```
+
+```{r}
+head(train)
+```
+
+
+```{r}
+#### Function to Calculate Discrepency Score ####
+# Input: 
+        # y.true: factor vector of 'Y' and 'N'
+        # y.predict: numeric vector of probabilities
+
+# Output: disprepancy score
+
+model_score = function(y.true, y.predict){
+    
+    ## convert y.true to binary of 0/1
+    y.true = as.numeric(y.true) - 1
+    
+    ## score (consistent with Qianli's version)
+    #score = -mean(y.true * log(y.predict + 10^(-23)) + (1 - y.true) * log(1 - y.predict + 10^(-23)))
+    e = 1e-5
+    score = -mean((y.true * log(pmax(pmin(y.predict,1-e),e)) + 
+                       (1-y.true) * log(pmax(pmin(1-y.predict,1-e),e))))
+    
+    return(score)
+}
+```
+
+
+```{r}
+#### Function to Calculate Cross-Validation Score (RF model) ####
+# Input: 
+        # ntree: parameter 'ntree' for randomForest
+        # mtry: parameter 'mtry' for randomForest
+        # data
+        # n_fold: k-fold cross validation, default = 10
+# Output: the averaged training score and cv score
+
+cv_score_rf = function(ntree, mtry, data, nodesize, n_fold = 10, seed = 0){
+    set.seed(seed)
+    folds_i = sample(1:n_fold, nrow(data), replace = TRUE)
+    # vector to store cross validation score
+    train_score = rep(0, n_fold)
+    test_score = rep(0, n_fold)
+    
+    for (i in 1:n_fold){
+        # split data
+        train= data[folds_i != i, ]
+        test = data[folds_i == i, ]
+
+        # train model
+        model = randomForest(factor(voted) ~., data = train, 
+                             ntree = ntree, mtry = mtry, nodesize = nodesize)
+       # predict
+        train.predict = predict(model, newdata = train, type = "prob")
+        test.predict = predict(model, newdata = test, type = "prob")
+        # evaluate score
+        score1 = model_score(train$voted, train.predict[,2])
+        score2 = model_score(test$voted, test.predict[,2])
+        
+        train_score[i] = score1
+        test_score[i] = score2
+    }
+    
+    
+    return(c(mean(train_score), mean(test_score)))
+}
+```
+
+
+-----
+## Cross-Validation for [ntree_val] and [mtry_val]
+
+```{r}
+## parameters to tune
+ntree_val = c(100, 200, 300)
+mtry_val = c(2, 4, 6, 8, 10, 12, 14, 16)
+```
+
+
+```{r}
+## list to store CV scores
+cv100.train = rep(0, length(mtry_val))
+cv100.test = rep(0, length(mtry_val))
+cv200.train = rep(0, length(mtry_val))
+cv200.test = rep(0, length(mtry_val))
+cv300.train = rep(0, length(mtry_val))
+cv300.test = rep(0, length(mtry_val))
+
+cv = list(cv100.train, cv100.test,
+          cv200.train, cv200.test,
+          cv300.train, cv300.test)
+```
+
+
+```{r}
+## cross validation for RF
+library(randomForest)
+library(dplyr)
+
+for (i in 1:length(ntree_val)){ 
+    ntree_i = ntree_val[i]
+    
+    for (j in 1:length(mtry_val)){
+         mtry_j = mtry_val[j]
+         
+         score = cv_score_rf(ntree = ntree_i, mtry = mtry_j, 
+                             nodesize = 1,
+                             data = sample_n(train, 10000))
+         
+         cv[[2*i-1]][j] = score[1]
+         cv[[2*i]][j] = score[2]
+    }
+}    
+```
+
+
+### Code for visualization CV results
+
+```{r}
+#jpeg('rf_cv_test.jpg')
+ntree_val = c(100, 200, 300)
+mtry_val = c(2, 4, 6, 8, 10, 12, 14, 16)
+
+plot(mtry_val, cv[[2]], col = "black", type = "b",
+     xlab = "mtry", ylab = "Loss",
+     main("Random Forest - Test Loss (10000 sample)"))
+lines(mtry_val, cv[[4]], col = "blue", type = "b")
+lines(mtry_val, cv[[6]], col = "red", type = "b")
+legend(12, 0.58, c("n_tree = 100", "n_tree = 200", "n_tree = 300"),
+       col = c("black", "blue", "red"), lty = 1)
+#dev.off()
+```
+
+
+## Cross-Validation for [nodesize]
+
+```{r}
+node_val = c(1,2,3,4,5,6,7,8,9,10)
+cv3_train = rep(0, length(node_val))
+cv3_test = rep(0, length(node_val))
+
+library(randomForest)
+library(dplyr)
+
+for (i in 1:length(node_val)){
+         node_i = node_val[i]
+         
+         score = cv_score_rf(ntree = 600, mtry = 2,
+                             nodesize = node_i,
+                             data = sample_n(train, 10000))
+         
+         cv3_train[i] = score[1]
+         cv3_test[i] = score[2]
+    }
+
+```
+
+```{r}
+cv3_train
+cv3_test
+```
+
+### Code for visualization CV results
+
+```{r}
+#jpeg('rf_cv_train_3.jpg')
+
+plot(node_val, cv3_test, col = "red", type = "b",
+     xlab = "Nodesize", ylab = "Loss",
+     main = "Random Forest - Training Loss (10000 sample)")
+
+#dev.off()
+```
+
+```{r}
+## save cv score
+cv.score.3 = data.frame("nodesize" = node_val, "train" = cv3_train, "test" = cv3_test)
+cv.score.3
+#write.csv(cv.score.3, file = "cv_score_3.csv")
+```
+
+---
+### Cross-validation for extra data
+
+```{r}
+## the full data (after imputation + extra "hd" information)
+train = read.csv("train_full.csv")
+test = read.csv("test_full.csv")
+
+## the orignal data (after imputation)
+train.ori.X = read.csv("train_nafill_X.csv")
+train.ori = data.frame(train.ori.X, voted = train$voted)
+test.ori.X = read.csv("test_nafill_X.csv")
+test.ori = data.frame(test.ori.X, Id = test$Id)
+
+
+#score = cv_score_rf(ntree = 600, mtry = 2, data = sample_n(train, 10000))
+
+```
+
+
+
+
+---
+# Code for final model
+
+Models submitted:
+1: ntree = 600, mtry = 3, loss = 0.55594
+2: ntree = 600, mtry = 2, loss = 0.55490
+3: ntree = 600, mtry = 2, nodesize = 9, loss = 0.55437
+
+```{r}
+## the full data (after imputation + extra "hd" information)
+train = read.csv("train_full.csv")
+test = read.csv("test_full.csv")
+
+##### final model #####
+final.model = randomForest(factor(voted) ~., data = train, 
+                           ntree = 600, mtry = 2, nodesize = 9,
+                           importance = TRUE) # return importance
+y.predict = predict(final.model, newdata = test[-21], type = "prob")
+
+### write prediction
+sample = read.csv("sample_submission.csv")
+sample$voted = y.predict[,2]
+write.csv(sample, file = "submission_rf_3.csv",row.names=FALSE)
+```
+
+```{r}
+# feature importance
+feature_importaince = data.frame(round(importance(final.model), 2))
+feature_importaince
+#write.csv(feature_importaince, file = "feature_importance.csv")
+```
+
+
+
+
+
