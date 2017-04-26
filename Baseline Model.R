@@ -10,7 +10,7 @@ bench.glm = glm(voted ~ gender + cd + hd + age + party + racename + hsonly + mrr
 
 #predict.bench = predict(bench.glm, newdata = test, type = "response", se.fit = TRUE)
 predict.bench = predict(bench.glm, newdata = test, type = "response")
-predict.bench
+predict.bench = data.frame(Id = 1:length(predict.bench),voted = predict.bench)
 
-#write the final csv file
-write.csv(predict.bench, "Pred_Prob.csv")
+#write the csv file for Kaggle submission
+write.csv(predict.bench,row.names= F, "Pred_Prob.csv")
