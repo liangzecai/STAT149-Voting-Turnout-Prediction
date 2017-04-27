@@ -16,6 +16,8 @@ Zecai:
 - imputate with extra data (rf, ntree?, important features?)
 - tune RF model (ntree, mtry, nodesize)
 - compare to original data
+- feature importance of 'N'
+- print tree?
 
 Qianli:
 - tune GLM/GAM model
