@@ -13,8 +13,9 @@ Yuefeng:
 - draft structure of Part4 for repost
 
 Zecai:
-- imputate with extra data
-- tune RF model
+- imputate with extra data (rf, ntree?, important features?)
+- tune RF model (ntree, mtry, nodesize)
+- compare to original data
 
 Qianli:
 - tune GLM/GAM model
