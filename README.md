@@ -21,4 +21,10 @@ Qianli:
 - tune GLM/GAM model
 
 
+Extra Data:
+1. precinct-level turnout rate
+https://www.sos.state.co.us/pubs/elections/resultsData.html
+
+2. active/inactive/pre-reg registratino data
+http://www.sos.state.co.us/pubs/elections/VoterRegNumbers/2016VoterRegNumbers.html#November
 
