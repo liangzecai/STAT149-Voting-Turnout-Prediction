@@ -1,0 +1,15 @@
+##### 149hddata_v2
+
+### variables
+
+hd: housing district
+hd.area: area in square mile
+hd.population: area population
+hd.density: people per square mile
+hd.city: yes if more than 1000+ pelple per square mile
+hd.housing_unit: # of housing unit
+hd.household_size: averaged household size
+hd.age: median age
+hd.voter: # of total eligible voters
+hd.active_voter_per: percentage of active votes
+hd.inactive_voter_per: percentage of inactive votes
