@@ -1,0 +1,101 @@
+---
+title: "CV Comparison Plots"
+author: "Qianli Sun"
+output: pdf_document
+---
+```{r}
+# 1) GLM results:
+# Call: 
+# 10-fold Cross Validation
+# 
+# Est. Opt. Method: glm(R-F)
+# Est. mspe:        0.551
+# Time Spent:       0.889 mins
+# > outCV
+# $mspe
+#                  method      mspe
+# method=glm(F)         1 0.5556768
+# method=glm(-hd)       2 0.5594973
+# method=glm(R-F)       3 0.5512195
+# method=glm(R-hd)      4 0.5551445
+# method=glm(I)         5 0.5768067
+# 
+# $opt
+# [1] "glm(R-F)"
+# 
+# 
+# 
+# 2) GAM results:
+# Call: 
+# 10-fold Cross Validation
+# 
+# Est. Opt. Method: gam(R-F)
+# Est. mspe:        0.551
+# Time Spent:       14.733 mins
+# > outCV
+# $mspe
+#                  method      mspe
+# method=gam(F)         1 0.5562196
+# method=gam(-hd)       2 0.5600337
+# method=gam(R-F)       3 0.5509658
+# method=gam(R-hd)      4 0.5537546
+# 
+# 
+# 3) rf results:
+# Call:
+# 10-fold Cross Validation
+# 
+# Est. Opt. Method: rf(Opt)
+# Est. mspe:        0.551
+# Time Spent:       1.614 mins
+# 
+# > outCV
+# $mspe
+#                method      mspe
+# method=rf(Def)      1 0.5512463
+# method=rf(Opt)      2 0.5508852
+# 
+# $opt
+# [1] "rf(Opt)"
+# 
+# $opt
+# [1] "gam(R-F)"
+```
+
+#1st plot
+```{r}
+#plot estimated prediction error
+method  = c("glm(F)", "glm(-hd)", "glm(R-F)", "glm(R-hd)", "glm(I)",
+           "gam(F)", "gam(-hd)", "gam(R-F)", "gam(R-hd)")
+score = c(0.5556768, 0.5594973, 0.5512195, 0.5551445, 0.5768067, 0.5562196, 0.5600337,
+          0.5509658,0.5537546)
+I = which(score==min(score))
+log=0
+ylim = log(range(score)*c(1,1.0))*log+range(score)*c(1,1.0)*(1-log)
+
+			plot(score, type="h", xlab="Method", ylab="Estimated Prediction Error", 
+				main="10-fold Cross Validation",
+				lwd=2,xaxt="n",ylim=ylim)
+			abline(h=seq(from=range(score)[1],to=range(score)[2],length=10),lwd=0.1)
+			axis(1,at=1:length(method),method,las=1,cex.axis=0.745)
+			points(I,score[I],col="red",pch=1,cex=2,lwd=3)
+			text(1:length(score),score,rank(score),pos=4,col="red")
+```
+
+#2nd plot
+```{r}
+#plot estimated prediction error
+method  = c("glm(R-F)", "gam(R-F)","rf(Opt)")
+score = c(0.5512195, 0.5509658, 0.5508852)
+I = which(score==min(score))
+log=0
+ylim = log(range(score)*c(1,1.0))*log+range(score)*c(1,1.0)*(1-log)
+
+			plot(score, type="h", xlab="Method", ylab="Estimated Prediction Error", 
+				main="10-fold Cross Validation",
+				lwd=2,xaxt="n",ylim=ylim)
+			abline(h=seq(from=range(score)[1],to=range(score)[2],length=10),lwd=0.1)
+			axis(1,at=1:length(method),method,las=1,cex.axis=0.85)
+			points(I,score[I],col="red",pch=1,cex=2,lwd=3)
+			text(1:length(score),score,rank(score),pos=4,col="red")
+```
