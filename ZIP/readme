@@ -1,0 +1,7 @@
+## Data:
+149hddata.xlsx: 
+
+## Code:
+STAT149_Project_EDA.Rmd: exloratpry data analysis
+STAT149_Project_NA.Rmd: missing value imputation
+STAT149_Project_RF.Rmd: fitting the random forest model
