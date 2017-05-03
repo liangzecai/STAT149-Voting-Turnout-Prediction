@@ -1,0 +1,111 @@
+---
+title: "stat149_project_EDA_clustering"
+author: "Zecai Liang"
+date: "2/28/2017"
+output: pdf_document
+---
+
+```{r}
+## load libraries
+options(warning = -1)
+
+library("ggplot2")
+library("gridExtra")
+
+library("cluster")
+library(factoextra)
+library(corrplot)
+
+library(e1071)
+library(gam)
+library(randomForest)
+```
+
+
+## Data
+
+```{r}
+## load data
+train <- read.csv("train.csv")
+test <- read.csv("test.csv")
+
+## turn categorical variable into factors
+train$cd <- factor(train$cd)
+train$hd <- factor(train$hd)
+
+test$cd <- factor(test$cd)
+test$hd <- factor(test$hd)
+```
+
+
+```{r}
+## ignore the two columns with large NA values
+train.simple <- train[!names(train) %in% c("dbdistance", "vccdistance")]
+## delete all NA values 
+train.simple <- na.omit(train.simple)
+```
+
+
+```{r}
+## convert all categorical variables to dummy coding
+library(dummies)
+train.dummy <- dummy.data.frame(data = train.simple, 
+                                names = c("gender", "cd", "hd", "party", "racename"))
+```
+
+```{r}
+head(train.dummy)
+```
+
+
+# Part 2. Visualize clustering/dimension reduction
+
+## 2.1. PCA
+
+```{r}
+## PCA for all variables (quantitative + dummy variables)
+
+# train PCA model
+train.pca <- prcomp(train.dummy[-1], scale = TRUE)
+# extract PC1 and PC2
+train.pc12 <- predict(train.pca, train.dummy[-1])[ , 1:2]
+df <- cbind(train.dummy[1], train.pc12)
+
+p <- ggplot(data = df, aes(PC1, PC2, color = voted)) + geom_point(alpha = 0.2, size = 1)
+p + ggtitle("Train Data")
+```
+
+
+```{r}
+colnames(train.simple)
+```
+
+```{r}
+## PCA for selected variables (excluding `cd` and `hd`)
+val = c("gender", "age", "party", "racename", "hsonly", "mrrg", "chldprsnt", "cath",
+        "evang", "nonchrst", "otherchrst", "days.since.reg")
+
+train.dummy2 <- dummy.data.frame(data = train.simple[val], 
+                                names = c("gender", "party", "racename"))
+
+```
+
+```{r}
+train.pca2 <- prcomp(train.dummy2, scale = TRUE)
+train.pca2.pc <- predict(train.pca2, train.dummy2)[ , 1:2]
+df <- cbind(train.dummy[1], train.pca2.pc)
+
+p <- ggplot(data = df, aes(PC1, PC2, color = voted)) + geom_point(alpha = 0.2, size = 1)
+p + ggtitle("Train Data")
+```
+
+Conclusion: No clear clusters, suggesting strong non-linear relationship between predictors and response.
+
+
+## 2.2 Kmeans
+```{r}
+## KMeans for all variables (quantitative + dummy variables)
+train.km <- kmeans(scale(train.dummy[-1]), center = 2)
+fviz_cluster(train.km, data = scale(train.dummy[-1]))
+```
+
