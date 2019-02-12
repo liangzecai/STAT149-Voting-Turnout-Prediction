@@ -1,5 +1,7 @@
 # STAT149_Project
 
+Predicting whether a registered voter in Colorado actually voted in 2017 election.
+
 google drive: https://drive.google.com/drive/folders/0B0oIcDvtYEfRa3B1OENKVVVfOU0
 
 Report: https://www.sharelatex.com/project/58c32b6eed66240c2e81d093
