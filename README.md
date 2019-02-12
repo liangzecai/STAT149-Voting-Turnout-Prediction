@@ -2,25 +2,7 @@
 
 google drive: https://drive.google.com/drive/folders/0B0oIcDvtYEfRa3B1OENKVVVfOU0
 
-Latex: https://www.sharelatex.com/project/58c32b6eed66240c2e81d093
-
-
-John: 
-- extra data [income], [weather]
-
-Yuefeng:
-- write Part1-2 for report
-- draft structure of Part4 for repost
-
-Zecai:
-- imputate with extra data (rf, ntree?, important features?)
-- tune RF model (ntree, mtry, nodesize)
-- compare to original data
-- feature importance of 'N'
-- print tree?
-
-Qianli:
-- tune GLM/GAM model
+Report: https://www.sharelatex.com/project/58c32b6eed66240c2e81d093
 
 
 Extra Data:
